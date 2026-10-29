@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Makers' Side — Creation gets weird together</title>
+<meta name="description" content="Makers' Side는 서울에서 음악, 영상, 게임·앱, 웹을 함께 만드는 작은 스튜디오입니다.">
+<meta property="og:title" content="Makers' Side">
+<meta property="og:description" content="Creation gets weird together.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://makersside.com/">
+<link rel="canonical" href="https://makersside.com/">
+<meta property="og:image" content="assets/logo-pink.png">
+<link rel="icon" href="assets/pal.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+<script>window.L3ready=new Promise(r=>{window.__l3res=r})</script>
+<script type="module">import("./scene3d.js").then(m=>window.__l3res(m)).catch(e=>{console.warn("3D scene unavailable",e);window.__l3res(null)})</script>
+<style>
+:root{--pink:#eabbda;--hot:#ff4fa0;--ink:#0b0b0b;--paper:#fff;--e:cubic-bezier(.2,.8,.2,1)}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body.locked{overflow:hidden;height:100svh;touch-action:none}
+a{color:inherit}
+.wrap{padding:0 clamp(20px,5vw,72px)}
+
+/* ---------- nav ---------- */
+nav{position:fixed;inset:0 0 auto 0;z-index:30;display:flex;justify-content:space-between;align-items:center;padding:18px clamp(20px,5vw,72px);mix-blend-mode:difference;color:#fff;font-weight:600;font-size:14px;letter-spacing:.02em;pointer-events:none}
+nav a{text-decoration:none;pointer-events:auto}
+nav .links{display:flex;gap:28px}
+nav .links a:hover{text-decoration:underline;text-underline-offset:4px}
+body.locked nav .links{visibility:hidden}
+
+/* ---------- hero ---------- */
+.hero{height:100svh;min-height:520px;background:var(--pink);display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto;position:relative;overflow:hidden}
+.hero .stage{display:grid;place-items:center;padding:64px 20px clamp(120px,24svh,210px);transform-style:preserve-3d;perspective:900px}
+#logo{visibility:hidden;width:min(80vw,44svh,640px);height:auto;transition:transform .25s var(--e);will-change:transform;user-select:none;-webkit-user-drag:none}
+#logo.sucked{transition:transform 1.5s cubic-bezier(.65,0,.95,.5),opacity 1.5s ease-in;opacity:0}
+.hero.shake{animation:shake .38s linear}
+@keyframes shake{0%{transform:translate(0,0)}15%{transform:translate(-9px,6px)}30%{transform:translate(8px,-7px)}45%{transform:translate(-6px,4px)}60%{transform:translate(5px,-3px)}80%{transform:translate(-2px,2px)}100%{transform:none}}
+.hero .meta{display:flex;justify-content:space-between;padding:10px clamp(20px,5vw,72px);font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.marquee{background:var(--ink);color:var(--pink);overflow:hidden;white-space:nowrap;padding:14px 0;font-weight:800;font-size:clamp(16px,2.2vw,28px)}
+.marquee div{display:inline-block;animation:slide 26s linear infinite}
+.marquee span{margin:0 .6em}
+@keyframes slide{to{transform:translateX(-50%)}}
+
+/* the hole */
+#hole{opacity:0;pointer-events:none;transition:opacity .5s var(--e),transform .9s cubic-bezier(.2,.9,.2,1);position:absolute;left:50%;bottom:clamp(86px,13svh,130px);width:min(62vw,440px);aspect-ratio:3.2/1;transform:translateX(-50%) scale(.2);cursor:pointer;border:0;background:none;padding:0;z-index:3}
+#hole .rim{position:absolute;inset:0;border-radius:50%;background:radial-gradient(closest-side,#000 45%,#1a0a14 62%,var(--hot) 63%,#ffd0ea 70%,rgba(255,255,255,0) 71%);filter:drop-shadow(0 6px 0 rgba(0,0,0,.25));transition:transform .4s var(--e)}
+#hole .swirl{position:absolute;inset:7%;border-radius:50%;overflow:hidden;-webkit-mask:radial-gradient(closest-side,#000 40%,transparent 92%);mask:radial-gradient(closest-side,#000 40%,transparent 92%)}
+#hole .swirl::before{content:"";position:absolute;left:50%;top:50%;width:140%;aspect-ratio:1;margin:-70% 0 0 -70%;background:conic-gradient(from 0deg,#000,#3a1030,#000,#7a1f5a,#000,#3a1030,#000);animation:spin 3.2s linear infinite}
+#hole .core{position:absolute;inset:30% 26%;border-radius:50%;background:#000;box-shadow:0 0 14px 6px #000}
+body.ready #hole{opacity:1;pointer-events:auto;transform:translateX(-50%) scale(1)}
+#hole.near .rim{transform:scale(1.1)}
+body.is3d #hole .rim,body.is3d #hole .swirl,body.is3d #hole .core{display:none}
+body.is3d .marquee div{visibility:hidden}
+body.is3d .marquee{background:transparent}
+body.is3d .hero .meta{padding-bottom:30px}
+#hole .tip{position:absolute;left:50%;top:100%;margin-top:2px;transform:translateX(-50%);white-space:nowrap;font-weight:800;font-size:14px;letter-spacing:.06em;animation:wob 1.6s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes wob{50%{transform:translate(-50%,-6px)}}
+
+/* ---------- canvases / veil ---------- */
+#pals{position:fixed;inset:0;z-index:20;pointer-events:none}
+#veil{position:fixed;inset:0;z-index:40;background:#000;clip-path:circle(0 at 50% 80%);pointer-events:none}
+#tunnel{position:fixed;inset:0;z-index:41;pointer-events:none;opacity:0}
+@property --c{syntax:'<length>';inherits:false;initial-value:0px}
+@property --r{syntax:'<length>';inherits:false;initial-value:0px}
+#flash{--c:200vmax;--r:0px;position:fixed;inset:0;z-index:42;background:var(--pink);opacity:0;pointer-events:none;clip-path:circle(var(--c) at 50% 50%);-webkit-mask-image:radial-gradient(circle at 50% 50%,transparent var(--r),#000 calc(var(--r) + 3px));mask-image:radial-gradient(circle at 50% 50%,transparent var(--r),#000 calc(var(--r) + 3px))}
+#flash.cover{transition:--c .42s cubic-bezier(.5,0,.9,.4)}
+#flash.open{transition:--r .85s cubic-bezier(.55,0,.15,1)}
+
+/* ---------- company ---------- */
+main{perspective:1200px;perspective-origin:50% 30%}
+#company{display:none}
+#company.on{display:block}
+#company.warp .intro .big,#company.warp .intro .sub,#company.warp .intro .label{animation:warp 1.5s cubic-bezier(.2,.9,.2,1) both}
+#company.warp .intro .sub{animation-delay:.15s}
+@keyframes warp{from{opacity:0;transform:translateZ(-1400px) rotateX(35deg)}to{opacity:1;transform:none}}
+
+.intro{padding-block:clamp(110px,15vw,210px) clamp(80px,12vw,180px)}
+.label{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:28px;display:block}
+.intro p.big{font-size:clamp(30px,5.6vw,84px);line-height:1.18;font-weight:800;letter-spacing:-.035em;max-width:18em;word-break:keep-all}
+.intro p.big em{font-style:normal;background:var(--pink);padding:0 .15em;border-radius:.2em}
+.intro p.sub{margin-top:48px;max-width:34em;font-size:clamp(16px,1.5vw,20px);line-height:1.7;color:#444;word-break:keep-all}
+
+.what{padding-bottom:clamp(80px,12vw,160px)}
+.what .label{padding:0 clamp(20px,5vw,72px)}
+.row{display:grid;grid-template-columns:90px 1fr 1.1fr;gap:20px;align-items:baseline;padding:30px clamp(20px,5vw,72px);border-top:2px solid var(--ink);transition:background .35s var(--e),padding-left .35s var(--e)}
+.row:last-child{border-bottom:2px solid var(--ink)}
+.row:hover{background:var(--pink);padding-left:calc(clamp(20px,5vw,72px) + 18px)}
+.row .n{font-weight:700;font-size:14px}
+.row h3{font-size:clamp(34px,6vw,96px);font-weight:900;letter-spacing:-.045em;line-height:1}
+.row p{font-size:clamp(15px,1.4vw,18px);line-height:1.65;color:#333;word-break:keep-all}
+
+.works{grid-column:1/-1;margin-top:26px}
+.work{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:clamp(18px,3vw,40px);align-items:center;text-decoration:none;background:#fff;border:2px solid var(--ink);border-radius:20px;padding:14px;transition:transform .35s var(--e),box-shadow .35s var(--e)}
+.work img{width:100%;height:auto;border-radius:12px;display:block;background:#101113}
+.work .wt{padding:6px 10px 6px 0}
+.work .tag{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#555}
+.work h5{font-size:clamp(30px,3.6vw,52px);font-weight:900;letter-spacing:-.04em;line-height:1;margin:10px 0 14px}
+.work p{font-size:clamp(14px,1.25vw,17px);line-height:1.65;color:#333;word-break:keep-all}
+.work .go{display:inline-block;margin-top:18px;font-weight:800;font-size:15px;border-bottom:2px solid var(--ink)}
+@media(hover:hover){.work:hover{transform:translateY(-4px) rotate(-.4deg);box-shadow:6px 8px 0 var(--ink)}}
+@media(max-width:760px){.work{grid-template-columns:1fr}.work .wt{padding:4px 6px 8px}}
+.row:has(.works){align-items:start}
+.row:has(.works):hover{background:transparent;padding-left:clamp(20px,5vw,72px)}
+.how{padding-bottom:clamp(80px,12vw,160px)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(20px,3vw,48px)}
+.step{border-top:2px solid var(--ink);padding-top:18px}
+.step b{font-size:14px}
+.step h4{font-size:clamp(22px,2.4vw,32px);font-weight:800;letter-spacing:-.03em;margin:10px 0 12px;line-height:1.2;word-break:keep-all}
+.step p{font-size:clamp(15px,1.3vw,17px);line-height:1.65;color:#333;word-break:keep-all}
+.contact .mail{margin-top:34px;font-size:clamp(16px,1.5vw,20px);font-weight:600}
+@media(max-width:760px){.steps{grid-template-columns:1fr}}
+.char{background:var(--ink);color:#fff;text-align:center;padding:clamp(80px,12vw,160px) 20px;overflow:hidden}
+.char img{width:min(70vw,460px);cursor:pointer;transition:transform .5s var(--e);filter:drop-shadow(0 20px 40px rgba(234,187,218,.18))}
+.char img:hover{transform:rotate(-6deg) scale(1.05)}
+.char h2{font-size:clamp(28px,4.6vw,64px);font-weight:900;letter-spacing:-.04em;margin-top:40px;line-height:1.15;word-break:keep-all}
+.char h2 span{color:var(--pink)}
+.char p{margin:18px auto 0;max-width:30em;color:#aaa;line-height:1.7;font-size:clamp(15px,1.4vw,18px);word-break:keep-all}
+.hint{margin-top:26px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#777}
+
+.contact{background:var(--pink);padding-top:clamp(70px,10vw,140px);padding-bottom:28px}
+.contact h2{font-size:clamp(44px,11vw,190px);font-weight:900;letter-spacing:-.06em;line-height:.9}
+.contact .cta{display:inline-block;margin-top:44px;background:var(--ink);color:var(--pink);padding:20px 34px;border-radius:999px;text-decoration:none;font-weight:800;font-size:18px;transition:transform .3s var(--e)}
+.contact .cta:hover{transform:translateY(-4px) rotate(-1.5deg)}
+.contact .cta:active{transform:scale(.96)}
+footer{margin-top:clamp(60px,9vw,120px);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+footer a{text-decoration:underline;text-underline-offset:4px}
+
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .8s var(--e),transform .8s var(--e)}
+.reveal.in{opacity:1;transform:none}
+
+@media(max-width:760px){
+ nav .links{gap:16px}
+ .row{grid-template-columns:1fr;gap:10px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
+</style>
+</head>
+<body class="locked">
+
+
+<nav>
+  <a href="#top">Makers' Side</a>
+  <div class="links"><a href="#what">What we make</a><a href="#hi">Hi</a><a href="#contact">Contact</a></div>
+</nav>
+
+<canvas id="pals"></canvas>
+<div id="veil"></div>
+<canvas id="tunnel"></canvas>
+<div id="flash"></div>
+
+<header class="hero" id="top">
+  <div class="stage"><img id="logo" src="assets/logo-main.png" alt="Makers' Side" width="1400" height="1386" draggable="false"></div>
+  <div>
+    <div class="meta"><span>Est. 2026</span><span>Based in Seoul</span></div>
+    <div class="marquee" aria-hidden="true"><div>
+      <span>Creation gets weird together</span>✺<span>Creation gets weird together</span>✺<span>Creation gets weird together</span>✺<span>Creation gets weird together</span>✺
+      <span>Creation gets weird together</span>✺<span>Creation gets weird together</span>✺<span>Creation gets weird together</span>✺<span>Creation gets weird together</span>✺
+    </div></div>
+  </div>
+  <button id="hole" aria-label="구멍으로 들어가서 회사 소개 보기">
+    <span class="tip">구멍에 빠져보세요 ↓</span>
+    <span class="rim"></span><span class="swirl"></span><span class="core"></span>
+  </button>
+</header>
+
+<main id="company">
+  <section class="intro wrap" id="about">
+    <span class="label">(About)</span>
+    <p class="big">우리는 서울의 작은 스튜디오. 만드는 사람들 <em>옆자리</em>에서, 조금 이상한 걸 같이 만듭니다.</p>
+    <p class="sub">Makers' Side는 2026년에 시작했어요. 음악, 영상, 게임과 앱, 웹사이트까지 — 장르를 가리지 않고 한 팀이 기획부터 완성까지 만듭니다. 잘 만드는 것만큼, 만드는 과정이 재밌는 걸 중요하게 생각해요. 그래서 우리가 만든 건 보면 우리 거라는 게 티가 납니다.</p>
+  </section>
+
+  <section class="what" id="what">
+    <span class="label reveal">(What we make)</span>
+    <div class="row reveal"><span class="n">01</span><h3>Music</h3><p>작곡, 편곡, 사운드 디자인, 믹싱과 마스터링. 노래 한 곡부터 게임·영상에 들어가는 효과음과 배경음악까지 직접 만듭니다.</p></div>
+    <div class="row reveal"><span class="n">02</span><h3>Video</h3><p>숏폼, 뮤직비디오, 프로모션 영상. 기획, 촬영 소스 편집, 자막, 모션그래픽까지 한 번에 끝냅니다.</p></div>
+    <div class="row reveal"><span class="n">03</span><h3>Games &amp; Apps</h3><p>브라우저와 모바일에서 바로 되는 게임과 앱. 아이디어를 손에 잡히는 프로토타입으로, 그다음 진짜 제품으로 만들어요.</p></div>
+    <div class="row reveal"><span class="n">04</span><h3>Web</h3><p>브랜드 사이트, 랜딩 페이지, 작은 서비스. 빠르고, 휴대폰에서 먼저 예쁜 웹사이트를 만듭니다. 지금 보고 계신 이 사이트처럼요.</p>
+      <div class="works">
+        <a class="work" href="https://pocketmix.app" target="_blank" rel="noopener">
+          <img src="assets/work-pocketmix.jpg" alt="PocketMix 홈 화면" loading="lazy" width="1200" height="547">
+          <div class="wt"><span class="tag">Web app · Music education</span><h5>PocketMix</h5>
+            <p>음악을 처음 만드는 사람을 위한 학습 웹앱. 짧은 레슨 162개, 브라우저에서 바로 쓰는 PocketDAW, 내 곡을 레퍼런스와 비교해 무엇이 다른지 알려 주는 분석기까지 직접 만들었어요.</p>
+            <span class="go">pocketmix.app ↗</span></div>
+        </a>
+      </div></div>
+  </section>
+
+  <section class="how wrap" id="how">
+    <span class="label reveal">(How we work)</span>
+    <div class="steps">
+      <div class="step reveal"><b>01</b><h4>먼저 만져 보게</h4><p>긴 기획서보다 작동하는 시안을 먼저 보여드려요. 보고 말하는 게 빠릅니다.</p></div>
+      <div class="step reveal"><b>02</b><h4>한 팀이 끝까지</h4><p>소리, 화면, 코드가 따로 놀지 않도록 한 팀이 처음부터 끝까지 맡습니다.</p></div>
+      <div class="step reveal"><b>03</b><h4>재미있게, 그리고 단단하게</h4><p>장난스러워도 휴대폰에서 빨리 뜨고 오래 가게 만들어요.</p></div>
+    </div>
+  </section>
+
+  <section class="char" id="hi">
+    <img id="blob" src="assets/pal-white.png" alt="Makers' Side 캐릭터">
+    <h2>안녕, 우리는 <span>Makers' Side</span>예요.</h2>
+    <p>별로 대단한 척은 안 해요. 같이 만들 사람을 기다리는 중입니다.</p>
+    <div class="hint" id="hint">Tap me</div>
+  </section>
+
+  <section class="contact wrap" id="contact">
+    <h2 class="reveal">Make<br>it weird<br>with us.</h2>
+    <p class="mail reveal">무엇이든 편하게 보내 주세요. 보통 하루 안에 답장해요.</p>
+    <a class="cta" href="mailto:larry@makersside.com">larry@makersside.com →</a>
+    <footer>
+      <span>© 2026 Makers' Side</span>
+      <a href="#" id="again">↑ 구멍으로 다시 가기</a>
+      <span>Seoul, Korea</span>
+    </footer>
+  </section>
+</main>
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const body=document.body, hole=$('#hole'), logo=$('#logo'), veil=$('#veil'), flash=$('#flash');
+const pc=$('#pals'), px=pc.getContext('2d'), tc=$('#tunnel'), tx=tc.getContext('2d');
+let W,H,DPR;
+function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;for(const c of [pc,tc]){c.width=W*DPR;c.height=H*DPR;c.style.width=W+'px';c.style.height=H+'px'}}
+resize();addEventListener('resize',resize);addEventListener('resize',()=>{if(L3){const mq=document.querySelector('.marquee').getBoundingClientRect();L3.layout(logo.getBoundingClientRect(),W,H,{top:mq.top,height:mq.height})}});
+
+/* ---------- the pal (the little character that chases the pointer) ---------- */
+const imgs={};
+function loadImg(n){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(i);i.src=n;imgs[n]=i})}
+const pals=[];
+const SIZE=()=>W<600?64:92;
+function addPal(x,y,img){pals.push({img,x,y,vx:0,vy:0,ph:Math.random()*6,sx:1,sy:1,rot:0,s:1,hop:0,yoff:0,sv:0,svy:0})}
+const mouse={x:W/2,y:H*.35,t:0,active:false};
+function setPtr(e){const p=e.touches?e.touches[0]:e;mouse.x=p.clientX;mouse.y=p.clientY;mouse.t=performance.now();mouse.active=true}
+addEventListener('pointermove',setPtr,{passive:true});
+addEventListener('pointerdown',e=>{setPtr(e);if(state==='intro')introSpeed=3.5;else burst(e.clientX,e.clientY)},{passive:true});
+addEventListener('touchmove',setPtr,{passive:true});
+
+let state='intro'; // intro -> play -> suck -> tunnel -> done
+let suckT=0, holeC={x:0,y:0,rx:1,ry:1};
+function measureHole(){const r=hole.getBoundingClientRect();holeC={x:r.left+r.width/2,y:r.top+r.height/2,rx:r.width/2,ry:r.height/2}}
+
+const sparks=[], rings=[];
+function burst(x,y){
+  if(state==='tunnel'||state==='suck'||state==='intro')return;
+  for(let i=0;i<14;i++){const a=Math.random()*6.28,s=3+Math.random()*7;sparks.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-3,l:1,c:['#ff4fa0','#eabbda','#0b0b0b','#fff'][i%4],r:3+Math.random()*5,g:.5})}
+  pals.forEach(p=>{if(p.hop<=0){p.hop=1}});
+}
+
+/* ---------- INTRO: the logo pours down like jelly, then a small pal bounces in on a trampoline ---------- */
+let introSpeed=1, introT=0, intro=null, armedAt=0, L3=null;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const spring=(t,k,w)=>Math.exp(-k*t)*Math.cos(w*t);
+const clamp01=v=>Math.max(0,Math.min(1,v));
+
+function holeInfo(){const r=hole.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2,r:r.width*.355}}
+function shadow(x,y,rx,lift,sz){const k=1/(1+lift/(sz*1.6));px.save();px.globalAlpha=.28*k;px.fillStyle='#4a1030';px.beginPath();px.ellipse(x,y,rx*k*1.1,rx*.2*k,0,0,6.283);px.fill();px.restore()}
+async function setupIntro(){
+  const [solo,img]=await Promise.all([loadImg('assets/pal.png'),loadImg('assets/logo-main.png')]);
+  const lr=logo.getBoundingClientRect(), sz=SIZE();
+  const sw=img.naturalWidth, sh=img.naturalHeight;
+  try{const mod=await window.L3ready;if(mod){const mq=document.querySelector('.marquee').getBoundingClientRect();L3=await mod.initScene({W,H,lr,marquee:{top:mq.top,height:mq.height}});body.classList.add('is3d')}}catch(e){console.warn('3D logo failed, using flat fallback',e);L3=null}
+  const NC=Math.max(60,Math.round(lr.width/3)), cwid=lr.width/NC, sc=sw/NC;
+  // each column leaves a beat after its neighbour, so the logo pours down as one stretchy curtain
+  const cols=[];
+  for(let i=0;i<NC;i++){const f=i/(NC-1);
+    cols.push({i,t0:.05+f*.28+Math.sin(f*Math.PI*4)*.05,dur:.6+Math.sin(f*7)*.04})}
+  // where the pal lands: beside the logo if there is room, otherwise just below it; never on the lettering
+  const mh=sz*solo.naturalHeight/solo.naturalWidth;
+  let gxp=lr.right+sz*.9, gyp=lr.top+lr.height*.78;
+  if(gxp>W-sz*.6){const ht=hole.getBoundingClientRect().top;gxp=W/2;gyp=lr.bottom+mh+Math.max(sz*.5,(ht-lr.bottom-mh)*.6)}
+  gyp=Math.min(gyp,H-170);
+  const bk=Math.max(.3,Math.min(1,(gyp-mh-lr.bottom-6)/(sz*2.6)));   // keep the bounces below the lettering
+  intro={solo,img,lr,cols,cwid,sc,sw,sh,sz,mh,gxp,gyp,bk,tChar:2.1,swapped:false,tEnd:0};
+  I_BOUNCE();
+}
+let BOUNCES=[];
+function I_BOUNCE(){
+  const I=intro,sz=I.sz;
+  const k=I.bk;BOUNCES=[{h:sz*2.6*k,T:.58},{h:sz*1.4*k,T:.44},{h:sz*.7*k,T:.34},{h:sz*.3*k,T:.25}];
+}
+function drawIntro(dt){
+  if(!intro)return;
+  introT+=dt/60*introSpeed;
+  const I=intro,t=introT,c=px,lr=I.lr;
+  const bottom=lr.top+lr.height, D=bottom+60;
+  if(L3){L3.frame({t,state:'intro',mouse,now:performance.now(),ready:false,hole:holeInfo(),near:false})}
+  else if(!I.swapped){
+    for(const k of I.cols){
+      const lt=t-k.t0;if(lt<0)continue;
+      const u=clamp01(lt/k.dur);
+      let sy,sx,yb;
+      if(u<1){yb=bottom-(1-u*u)*D;sy=1+.6*u;sx=1-.08*u}               // falling: stretching taller and thinner, like jelly
+      else{const s=spring(lt-k.dur,4.6,15);sy=1-.36*s;sx=1+.2*s;yb=bottom}  // landing: squash, then wobble
+      const h=lr.height*sy,w=I.cwid*sx+1.2;
+      const cx=lr.left+(k.i+.5)*I.cwid;
+      c.drawImage(I.img,k.i*I.sc,0,I.sc,I.sh,cx-w/2,yb-h,w,h);
+    }
+    if(t>=2.4){I.swapped=true;logo.style.visibility='visible'}
+  }
+  // the pal: drops in small, bounces like on a trampoline, never touches the lettering
+  const tc=t-I.tChar;
+  if(tc>=0){
+    const sz=I.sz,mh=I.mh,gx=I.gxp,gy=I.gyp;
+    let y=gy,sy=1,sx=1;
+    const FALL=.55;
+    if(tc<FALL){const u=tc/FALL;y=gy-(1-u*u)*(gy+sz*1.6);sy=1+.35*u;sx=1/Math.sqrt(sy)}
+    else{
+      let r=tc-FALL,done=true;
+      for(const b of BOUNCES){
+        const SQ=.1;
+        if(r<SQ){const u=r/SQ;sy=.55+.45*u*u;sx=1/Math.sqrt(sy)*1.02;y=gy;done=false;break}     // pressing into the trampoline
+        r-=SQ;
+        if(r<b.T){const v=r/b.T;y=gy-b.h*4*v*(1-v);const e=Math.abs(1-2*v);sy=1+.28*e*e;sx=1/Math.sqrt(sy);done=false;break}   // in the air, stretched at the ends
+        r-=b.T;
+      }
+      if(done){const s=spring(r,9,26);sy=1-.12*s;sx=1+.08*s;y=gy;
+        if(r>.3){finishIntro();return}}
+    }
+    shadow(gx,gy+3,sz*.42,Math.max(0,gy-y),sz);c.save();c.translate(gx,y);c.scale(sx,sy);c.drawImage(I.solo,-sz/2,-mh,sz,mh);c.restore()
+  }
+}
+function finishIntro(){
+  const I=intro;if(!I)return;
+  if(!L3)logo.style.visibility='visible';
+  addPal(I.gxp,I.gyp-I.mh/2,I.solo);
+  body.classList.add('ready');
+  state='play';intro=null;
+  mouse.active=false;mouse.t=performance.now();
+  armedAt=performance.now()+1800;          // the hole wakes up a moment later, so nothing falls in by accident
+}
+
+let last=performance.now(), idleT=0;
+let __c=0,__n=0;
+function step(now){
+  const __t=performance.now();
+  const dt=Math.min(100,now-last)/16.67;last=now;
+  px.setTransform(DPR,0,0,DPR,0,0);px.clearRect(0,0,W,H);
+  if(state==='intro')drawIntro(dt);
+  if(state==='play')updatePals(dt,now);
+  if(L3&&(state==='play'||state==='suck'))L3.frame({t:99,state,mouse,now,ready:true,hole:holeInfo(),near:hole.classList.contains('near')});
+  if(state==='suck')updateSuck(dt);
+  drawPals();
+  for(let i=sparks.length-1;i>=0;i--){const s=sparks[i];s.x+=s.vx*dt;s.y+=s.vy*dt;s.vy+=(s.g??.5)*dt;s.l-=.028*dt;if(s.l<=0){sparks.splice(i,1);continue}
+    px.globalAlpha=Math.min(1,s.l*1.5);px.fillStyle=s.c;px.beginPath();px.arc(s.x,s.y,s.r*Math.max(.2,s.l),0,6.28);px.fill()}
+  for(let i=rings.length-1;i>=0;i--){const r=rings[i];r.r+=7*dt;r.l-=.05*dt;if(r.l<=0){rings.splice(i,1);continue}
+    px.globalAlpha=r.l;px.strokeStyle='#ff4fa0';px.lineWidth=5*r.l;px.beginPath();px.arc(r.x,r.y,r.r,0,6.28);px.stroke()}
+  px.globalAlpha=1;
+  if(state==='tunnel')drawTunnel(now);
+  __c+=performance.now()-__t;__n++;window.__ms&&(window.__ms.avg=__c/__n);
+  requestAnimationFrame(step);
+}
+
+function updatePals(dt,now){
+  const sz=SIZE();
+  let tx_=mouse.x,ty_=mouse.y;
+  if(!mouse.active||now-mouse.t>2500){idleT+=dt*.02;tx_=W/2+Math.cos(idleT*1.3)*W*.3;ty_=H*.42+Math.sin(idleT*2.1)*H*.18}
+  let nearHole=false;
+  measureHole();
+  const nx=(tx_-holeC.x)/holeC.rx, ny=(ty_-holeC.y)/holeC.ry, d=Math.hypot(nx,ny);
+  nearHole=d<1.7;
+  hole.classList.toggle('near',nearHole);
+  const armed=performance.now()>armedAt;
+  if(nearHole&&armed){tx_+=(holeC.x-tx_)*.25;ty_+=(holeC.y-ty_)*.25}
+  const lead=pals[0];
+  if(armed&&lead&&Math.hypot((lead.x-holeC.x)/holeC.rx,(lead.y-holeC.y)/holeC.ry)<.7&&mouse.active)startSuck();
+  pals.forEach(p=>{
+    const px_=p.x,py_=p.y;
+    // loose, jelly-like chase: keeps its distance and overshoots a little
+    let ax=tx_-p.x,ay=(ty_-sz*.1)-p.y;const dd=Math.hypot(ax,ay)||1;
+    const gap=(nearHole&&armed)?0:sz*1.5;
+    const want=Math.max(0,dd-gap);
+    p.sv+=ax/dd*want*.011*dt; p.svy+=ay/dd*want*.011*dt;
+    const damp=Math.pow(.91,dt);p.sv*=damp;p.svy*=damp;
+    p.x+=p.sv*dt;p.y+=p.svy*dt;
+    // the pal is solid: it bumps into the Makers' Side lettering and never slips under it
+    {const lr=logo.getBoundingClientRect(),hw=sz*.4,hh=sz*.3,L=lr.left+lr.width*.02-hw,Rr=lr.right-lr.width*.02+hw,T=lr.top+lr.height*.16-hh,B=lr.bottom+hh;
+     if(p.x>L&&p.x<Rr&&p.y>T&&p.y<B){
+       const dl=p.x-L,dr=Rr-p.x,dtp=p.y-T,db=B-p.y,m=Math.min(dl,dr,dtp,db);let nx=0,ny=0,into=0;
+       if(m===dl){p.x=L;nx=-1;into=p.sv}else if(m===dr){p.x=Rr;nx=1;into=-p.sv}else if(m===dtp){p.y=T;ny=-1;into=p.svy}else{p.y=B;ny=1;into=-p.svy}
+       if(nx){p.sv=-p.sv*.4}else{p.svy=-p.svy*.4}
+       const now2=performance.now();
+       if(into>1.6&&now2-(p.lastHit||0)>260){p.lastHit=now2;p.hop=.55;p.sx=1+.25*Math.abs(ny);p.sy=1-.25*Math.abs(ny);
+         const amp=Math.min(1,into/10),cx=(lr.left+lr.right)/2,cy=(lr.top+lr.bottom)/2,ax=cx-p.x,ay=cy-p.y,al=Math.hypot(ax,ay)||1;
+         if(L3)L3.poke(now2,ax/al,-ay/al,.35+.65*amp);
+         for(let i=0;i<8;i++){const a=Math.random()*6.28,sp2=2+Math.random()*5;sparks.push({x:p.x,y:p.y,vx:Math.cos(a)*sp2,vy:Math.sin(a)*sp2-2,l:1,c:['#ff4fa0','#fff','#0b0b0b'][i%3],r:2+Math.random()*3,g:.35})}}
+     }}
+    p.vx=(p.x-px_)/dt;p.vy=(p.y-py_)/dt;
+    const sp=Math.hypot(p.vx,p.vy);
+    p.ph+=(sp*.05+.03)*dt;
+    const b=Math.abs(Math.sin(p.ph));
+    p.hop=Math.max(0,p.hop-.04*dt);
+    const h=b*Math.min(1,sp/4)*sz*.38+p.hop*sz*.6;
+    p.yoff=-h;
+    const land=1-b;
+    const sq=Math.min(1,sp/5)*(land>.88?(land-.88)*4:0);
+    p.sx+=((1+sq*.4-(h/sz)*.25)-p.sx)*.25;p.sy+=((1-sq*.35+(h/sz)*.3)-p.sy)*.25;
+    p.rot+=((Math.max(-.5,Math.min(.5,p.vx*.05)))-p.rot)*.15;
+  });
+}
+function drawPals(){
+  const sz=SIZE();
+  for(const p of pals){
+    if(!p.img.complete)continue;
+    const w=sz*p.s,h=w*p.img.naturalHeight/p.img.naturalWidth;
+    if(state!=='suck')shadow(p.x,p.y+h/2+2,w*.42,-(p.yoff||0),sz);
+    px.save();px.translate(p.x,p.y+(p.yoff||0));px.rotate(p.rot);px.scale(p.sx,p.sy);
+    px.drawImage(p.img,-w/2,-h/2,w,h);px.restore();
+  }
+}
+
+/* ---------- the suck ---------- */
+function startSuck(){
+  if(state!=='play'||performance.now()<armedAt)return;
+  state='suck';suckT=0;measureHole();hole.classList.add('near');
+  // logo gets pulled in too
+  if(L3)L3.suck(performance.now(),holeC.x,holeC.y);
+  else{  const lr=logo.getBoundingClientRect();
+    logo.style.transform=`translate(${holeC.x-(lr.left+lr.width/2)}px,${holeC.y-(lr.top+lr.height/2)}px) rotate(540deg) scale(.02)`;
+    logo.classList.add('sucked');}
+  veil.style.clipPath=`circle(0px at ${holeC.x}px ${holeC.y}px)`;
+  veil.style.transition='clip-path 1.25s cubic-bezier(.5,0,.8,.3)';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{veil.style.clipPath=`circle(${Math.hypot(W,H)}px at ${holeC.x}px ${holeC.y}px)`}));
+}
+function updateSuck(dt){
+  suckT+=dt/60;
+  pals.forEach((p,i)=>{
+    const a=Math.atan2(p.y-holeC.y,p.x-holeC.x), r=Math.hypot(p.x-holeC.x,p.y-holeC.y);
+    const delay=i*.08; if(suckT<delay)return;
+    const nr=r*(1-.07*dt)-1.5*dt, na=a+(.12+.5/(r/80+1))*dt;
+    p.x=holeC.x+Math.cos(na)*Math.max(0,nr)*1;p.y=holeC.y+Math.sin(na)*Math.max(0,nr)*.45;
+    p.s=Math.max(0,p.s-.022*dt);p.rot+=.3*dt;p.yoff=0;
+  });
+  if(suckT>=1.25&&state==='suck'){state='tunnel';tunT=0;tc.style.opacity=1}
+}
+
+/* ---------- 3D tunnel ---------- */
+let tunT=0,tLast=0,tunEnd=false;
+const RINGS=26;
+function drawTunnel(now){
+  const dt=Math.min(40,now-(tLast||now))/1000;tLast=now;tunT+=dt;
+  if(L3){L3.frame({t:99,state:'tunnel',mouse,now,tunT});
+    if(tunT>1.8&&!tunEnd){tunEnd=true;flash.classList.remove('open');flash.style.transition='none';flash.style.setProperty('--c','0px');flash.style.setProperty('--r','0px');flash.style.opacity=1;void flash.offsetWidth;flash.style.transition='';flash.classList.add('cover');flash.style.setProperty('--c','200vmax');setTimeout(()=>{if(state==='tunnel')land()},430)}
+    return}
+  tx.setTransform(DPR,0,0,DPR,0,0);
+  tx.fillStyle='#000';tx.fillRect(0,0,W,H);
+  const k=Math.min(1,tunT/1.0);               // hole centre drifts to screen centre
+  const cx=holeC.x+(W/2-holeC.x)*k, cy=holeC.y+(H/2-holeC.y)*k;
+  const speed=.35+tunT*.55, diag=Math.hypot(W,H);
+  const tw=Math.sin(tunT*2)*.15;
+  // streaks
+  tx.lineWidth=2;
+  for(let i=0;i<48;i++){
+    const a=i/48*6.283+tunT*.3, z=((i*.37+tunT*speed*1.6)%1);
+    const r0=diag*(1-z)**2*.9, r1=r0+diag*.12*(1-z)+4;
+    tx.strokeStyle=i%3===0?'#ff4fa0':i%3===1?'#eabbda':'#ffffff';tx.globalAlpha=.25+.6*z;
+    tx.beginPath();tx.moveTo(cx+Math.cos(a)*r0,cy+Math.sin(a)*r0);tx.lineTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);tx.stroke();
+  }
+  // rings (painter order far -> near)
+  const rings=[];
+  for(let i=0;i<RINGS;i++){rings.push({z:((i/RINGS)-tunT*speed*.5)%1,i})}
+  rings.forEach(r=>{if(r.z<0)r.z+=1});
+  rings.sort((a,b)=>b.z-a.z);
+  for(const r of rings){
+    const rad=Math.max(2,diag*.02/ (r.z*r.z+.004));
+    const wob=Math.sin(tunT*3+r.i)*rad*.04*tw;
+    const col=['#ff4fa0','#0b0b0b','#eabbda','#ffffff'][r.i%4];
+    tx.globalAlpha=Math.min(1,(1-r.z)*1.4);
+    tx.lineWidth=Math.max(1,rad*.06);
+    tx.strokeStyle=col;
+    tx.beginPath();tx.ellipse(cx+wob,cy,rad,rad*(.9+tw*.2),tunT*.2*(r.i%2?1:-1),0,6.283);tx.stroke();
+  }
+  tx.globalAlpha=1;
+  // glow at the far end
+  const g=tx.createRadialGradient(cx,cy,0,cx,cy,diag*.25);g.addColorStop(0,'rgba(255,79,160,.9)');g.addColorStop(1,'rgba(255,79,160,0)');
+  tx.fillStyle=g;tx.fillRect(0,0,W,H);
+  // end: flash to pink and land
+  if(tunT>2.2){const f=Math.min(1,(tunT-2.2)/.5);flash.style.opacity=f;if(f>=1&&state==='tunnel')land()}
+}
+function land(){
+  state='done';
+  if(L3)L3.hide();
+  $('.hero').style.display='none';
+  const c=$('#company');c.classList.add('on','warp');
+  body.classList.remove('locked');scrollTo(0,0);
+  tc.style.opacity=0;veil.style.display='none';veil.style.transition='none';
+  pals.length=0;  // the pal stays behind; no more chasing on the company page
+  flash.classList.remove('cover');void flash.offsetWidth;flash.classList.add('open');flash.style.setProperty('--r','200vmax');setTimeout(()=>{flash.style.opacity=0;flash.classList.remove('open')},900);
+  mouse.active=false;
+  observe();
+}
+
+/* ---------- hero parallax: logo tilts with the pointer ---------- */
+addEventListener('pointermove',e=>{
+  if(state!=='play')return;
+  const dx=(e.clientX/W-.5),dy=(e.clientY/H-.5);
+  logo.style.transform=`rotateY(${dx*18}deg) rotateX(${-dy*14}deg) translate(${dx*-20}px,${dy*-14}px)`;
+},{passive:true});
+logo.addEventListener('pointerenter',()=>{if(state==='play')logo.animate([{transform:logo.style.transform},{transform:'scale(1.06) rotate(-3deg)'},{transform:'scale(.97) rotate(2deg)'},{transform:logo.style.transform}],{duration:500,easing:'ease-out'})});
+
+/* ---------- triggers ---------- */
+hole.addEventListener('click',e=>{e.stopPropagation();if(state==='play'){ // send the leader in
+  measureHole();if(pals[0]){pals[0].x=holeC.x;pals[0].y=holeC.y}mouse.active=true;startSuck()}});
+addEventListener('wheel',e=>{if(state==='play'&&e.deltaY>20){measureHole();if(pals[0]){pals[0].x=holeC.x;pals[0].y=holeC.y}startSuck()}},{passive:true});
+let ty0=null;addEventListener('touchstart',e=>ty0=e.touches[0].clientY,{passive:true});
+addEventListener('touchend',e=>{if(state==='play'&&ty0!==null&&ty0-e.changedTouches[0].clientY>60){measureHole();if(pals[0]){pals[0].x=holeC.x;pals[0].y=holeC.y}startSuck()}ty0=null},{passive:true});
+$('#again').addEventListener('click',e=>{e.preventDefault();location.reload()});
+
+/* ---------- misc ---------- */
+let io;function observe(){io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.15});document.querySelectorAll('.reveal').forEach(el=>io.observe(el))}
+const b=$('#blob'),h=$('#hint');const say=['Hi!','Hello?','Stop poking :)','Weird. I like it.','Okay, one more.','Let\u2019s make something.'];let si=0;
+b.addEventListener('click',()=>{h.textContent=say[si++%say.length];b.animate([{transform:'scale(1)'},{transform:'scale(.88,1.1)'},{transform:'scale(1.08,.94)'},{transform:'scale(1)'}],{duration:420,easing:'ease-out'})});
+
+/* ---------- boot ---------- */
+(async()=>{
+  if(/[?&]skip/.test(location.search)||/^#(about|what|how|hi|contact)$/.test(location.hash)){   // a link straight to the content: no intro
+    state='done';$('.hero').style.display='none';$('#company').classList.add('on');body.classList.remove('locked');observe();
+    document.querySelectorAll('.reveal').forEach(el=>el.classList.add('in'));
+    if(location.hash)setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView(),50);return}
+  if(reduce){const solo=await loadImg('assets/pal.png');addPal(W/2,H*.5,solo);body.classList.add('ready');state='play';return}
+  try{await (document.fonts?.ready);await setupIntro()}catch(e){console.warn(e);const solo=await loadImg('assets/pal.png');addPal(W/2,H*.5,solo);body.classList.add('ready');state='play'}
+})();
+requestAnimationFrame(step);
+window.__ms={seek(t){introSpeed=0;introT=t},startSuck,get state(){return state},pals};
+})();
+</script>
+</body>
+</html>

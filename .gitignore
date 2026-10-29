@@ -1,0 +1,11 @@
+tools/
+logo3d.old.js
+vendor/RoomEnvironment.js
+assets/blob-*.png
+assets/*.cut.png
+assets/logo-atlas.png
+assets/logo-pieces.json
+assets/logo-black.png
+assets/logo-white.png
+assets/wordmark-black.png
+.DS_Store
