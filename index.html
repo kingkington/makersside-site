@@ -31,6 +31,7 @@ nav a{text-decoration:none;pointer-events:auto}
 nav .links{display:flex;gap:28px}
 nav .links a:hover{text-decoration:underline;text-underline-offset:4px}
 body.locked nav .links{visibility:hidden}
+body.locked nav{mix-blend-mode:normal;color:#0b0b0b}   /* no blending over the animated canvas: it is expensive on phones */
 
 /* ---------- hero ---------- */
 .hero{height:100svh;min-height:520px;background:var(--pink);display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto;position:relative;overflow:hidden}
@@ -46,15 +47,15 @@ body.locked nav .links{visibility:hidden}
 @keyframes slide{to{transform:translateX(-50%)}}
 
 /* the hole */
-#hole{opacity:0;pointer-events:none;transition:opacity .5s var(--e),transform .9s cubic-bezier(.2,.9,.2,1);position:absolute;left:50%;bottom:clamp(86px,13svh,130px);width:min(62vw,440px);aspect-ratio:3.2/1;transform:translateX(-50%) scale(.2);cursor:pointer;border:0;background:none;padding:0;z-index:3}
+#hole{opacity:0;pointer-events:none;transition:opacity .5s var(--e),transform .9s cubic-bezier(.2,.9,.2,1);position:absolute;left:var(--hx,50%);top:var(--hy,70%);width:var(--hw,170px);aspect-ratio:3.2/1;transform:translate(-50%,-50%) scale(.2);cursor:pointer;border:0;background:none;padding:0;z-index:3}
 #hole .rim{position:absolute;inset:0;border-radius:50%;background:radial-gradient(closest-side,#000 45%,#1a0a14 62%,var(--hot) 63%,#ffd0ea 70%,rgba(255,255,255,0) 71%);filter:drop-shadow(0 6px 0 rgba(0,0,0,.25));transition:transform .4s var(--e)}
 #hole .swirl{position:absolute;inset:7%;border-radius:50%;overflow:hidden;-webkit-mask:radial-gradient(closest-side,#000 40%,transparent 92%);mask:radial-gradient(closest-side,#000 40%,transparent 92%)}
 #hole .swirl::before{content:"";position:absolute;left:50%;top:50%;width:140%;aspect-ratio:1;margin:-70% 0 0 -70%;background:conic-gradient(from 0deg,#000,#3a1030,#000,#7a1f5a,#000,#3a1030,#000);animation:spin 3.2s linear infinite}
 #hole .core{position:absolute;inset:30% 26%;border-radius:50%;background:#000;box-shadow:0 0 14px 6px #000}
-body.ready #hole{opacity:1;pointer-events:auto;transform:translateX(-50%) scale(1)}
+body.ready #hole{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
 #hole.near .rim{transform:scale(1.1)}
 body.is3d #hole .rim,body.is3d #hole .swirl,body.is3d #hole .core{display:none}
-body.is3d .marquee div{visibility:hidden}
+body.is3d .marquee div{visibility:hidden;animation:none}
 body.is3d .marquee{background:transparent}
 body.is3d .hero .meta{padding-bottom:30px}
 #hole .tip{position:absolute;left:50%;top:100%;margin-top:2px;transform:translateX(-50%);white-space:nowrap;font-weight:800;font-size:14px;letter-spacing:.06em;animation:wob 1.6s ease-in-out infinite}
@@ -163,7 +164,6 @@ footer a{text-decoration:underline;text-underline-offset:4px}
     </div></div>
   </div>
   <button id="hole" aria-label="구멍으로 들어가서 회사 소개 보기">
-    <span class="tip">구멍에 빠져보세요 ↓</span>
     <span class="rim"></span><span class="swirl"></span><span class="core"></span>
   </button>
 </header>
@@ -223,10 +223,11 @@ footer a{text-decoration:underline;text-underline-offset:4px}
 (()=>{
 const $=s=>document.querySelector(s);
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const LOW=matchMedia('(pointer: coarse)').matches||Math.min(innerWidth,innerHeight)<700||/[?&]low/.test(location.search);
 const body=document.body, hole=$('#hole'), logo=$('#logo'), veil=$('#veil'), flash=$('#flash');
 const pc=$('#pals'), px=pc.getContext('2d'), tc=$('#tunnel'), tx=tc.getContext('2d');
 let W,H,DPR;
-function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;for(const c of [pc,tc]){c.width=W*DPR;c.height=H*DPR;c.style.width=W+'px';c.style.height=H+'px'}}
+function resize(){DPR=Math.min(LOW?1.5:2,devicePixelRatio||1);W=innerWidth;H=innerHeight;for(const c of [pc,tc]){c.width=W*DPR;c.height=H*DPR;c.style.width=W+'px';c.style.height=H+'px'}}
 resize();addEventListener('resize',resize);addEventListener('resize',()=>{if(L3){const mq=document.querySelector('.marquee').getBoundingClientRect();L3.layout(logo.getBoundingClientRect(),W,H,{top:mq.top,height:mq.height})}});
 
 /* ---------- the pal (the little character that chases the pointer) ---------- */
@@ -243,7 +244,23 @@ addEventListener('touchmove',setPtr,{passive:true});
 
 let state='intro'; // intro -> play -> suck -> tunnel -> done
 let suckT=0, holeC={x:0,y:0,rx:1,ry:1};
-function measureHole(){const r=hole.getBoundingClientRect();holeC={x:r.left+r.width/2,y:r.top+r.height/2,rx:r.width/2,ry:r.height/2}}
+function placeHole(){
+  const hero=document.querySelector('.hero').getBoundingClientRect(),lr=logo.getBoundingClientRect(),mq=document.querySelector('.marquee').getBoundingClientRect();
+  const w=Math.round(Math.max(96,Math.min(W<600?118:170,W*.3))),h=w/3.2,m=14;
+  const pts=[];
+  for(let i=0;i<60;i++){
+    const x=m+w/2+Math.random()*(W-2*m-w),y=70+h/2+Math.random()*(mq.top-70-h-m);
+    const clearLogo=x+w/2<lr.left-6||x-w/2>lr.right+6||y+h/2<lr.top-6||y-h/2>lr.bottom+6;
+    if(clearLogo&&y+h/2<mq.top-m&&y-h/2>64)pts.push([x,y]);
+  }
+  // nothing fits beside the logo (a phone): use the open ground between logo and marquee
+  const [x,y]=pts.length?pts[(Math.random()*pts.length)|0]:[m+w/2+Math.random()*(W-2*m-w),(lr.bottom+mq.top)/2+h/2+Math.random()*Math.max(1,mq.top-lr.bottom-h*1.5)-h/2];
+  hole.style.setProperty('--hx',x+'px');hole.style.setProperty('--hy',y+'px');hole.style.setProperty('--hw',w+'px');
+}
+let LRECT=null,HRECT=null;
+function refreshRects(){LRECT=logo.getBoundingClientRect();HRECT=hole.getBoundingClientRect()}
+addEventListener('resize',refreshRects);
+function measureHole(){if(!HRECT||performance.now()<armedAt)HRECT=hole.getBoundingClientRect();const r=HRECT;holeC={x:r.left+r.width/2,y:r.top+r.height/2,rx:r.width/2,ry:r.height/2}}
 
 const sparks=[], rings=[];
 function burst(x,y){
@@ -258,13 +275,14 @@ const rnd=(a,b)=>a+Math.random()*(b-a);
 const spring=(t,k,w)=>Math.exp(-k*t)*Math.cos(w*t);
 const clamp01=v=>Math.max(0,Math.min(1,v));
 
-function holeInfo(){const r=hole.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2,r:r.width*.355}}
+function holeInfo(){const r=(!HRECT||performance.now()<armedAt)?(HRECT=hole.getBoundingClientRect()):HRECT;return{x:r.left+r.width/2,y:r.top+r.height/2,r:r.width*.355}}
 function shadow(x,y,rx,lift,sz){const k=1/(1+lift/(sz*1.6));px.save();px.globalAlpha=.28*k;px.fillStyle='#4a1030';px.beginPath();px.ellipse(x,y,rx*k*1.1,rx*.2*k,0,0,6.283);px.fill();px.restore()}
 async function setupIntro(){
+  placeHole();
   const [solo,img]=await Promise.all([loadImg('assets/pal.png'),loadImg('assets/logo-main.png')]);
   const lr=logo.getBoundingClientRect(), sz=SIZE();
   const sw=img.naturalWidth, sh=img.naturalHeight;
-  try{const mod=await window.L3ready;if(mod){const mq=document.querySelector('.marquee').getBoundingClientRect();L3=await mod.initScene({W,H,lr,marquee:{top:mq.top,height:mq.height}});body.classList.add('is3d')}}catch(e){console.warn('3D logo failed, using flat fallback',e);L3=null}
+  try{const mod=await window.L3ready;if(mod){const mq=document.querySelector('.marquee').getBoundingClientRect();L3=await mod.initScene({W,H,lr,marquee:{top:mq.top,height:mq.height}});body.classList.add('is3d');tc.style.display='none'}}catch(e){console.warn('3D logo failed, using flat fallback',e);L3=null}
   const NC=Math.max(60,Math.round(lr.width/3)), cwid=lr.width/NC, sc=sw/NC;
   // each column leaves a beat after its neighbour, so the logo pours down as one stretchy curtain
   const cols=[];
@@ -272,17 +290,17 @@ async function setupIntro(){
     cols.push({i,t0:.05+f*.28+Math.sin(f*Math.PI*4)*.05,dur:.6+Math.sin(f*7)*.04})}
   // where the pal lands: beside the logo if there is room, otherwise just below it; never on the lettering
   const mh=sz*solo.naturalHeight/solo.naturalWidth;
-  let gxp=lr.right+sz*.9, gyp=lr.top+lr.height*.78;
-  if(gxp>W-sz*.6){const ht=hole.getBoundingClientRect().top;gxp=W/2;gyp=lr.bottom+mh+Math.max(sz*.5,(ht-lr.bottom-mh)*.6)}
-  gyp=Math.min(gyp,H-170);
-  const bk=Math.max(.3,Math.min(1,(gyp-mh-lr.bottom-6)/(sz*2.6)));   // keep the bounces below the lettering
-  intro={solo,img,lr,cols,cwid,sc,sw,sh,sz,mh,gxp,gyp,bk,tChar:2.1,swapped:false,tEnd:0};
-  I_BOUNCE();
-}
-let BOUNCES=[];
-function I_BOUNCE(){
-  const I=intro,sz=I.sz;
-  const k=I.bk;BOUNCES=[{h:sz*2.6*k,T:.58},{h:sz*1.4*k,T:.44},{h:sz*.7*k,T:.34},{h:sz*.3*k,T:.25}];
+  // the pal peeks in from the left or right edge about a second after the logo has landed
+  const hr=hole.getBoundingClientRect(), hcx=hr.left+hr.width/2;
+  let side=Math.random()<.5?-1:1;                                   // -1 = left edge, 1 = right edge
+  const landX=s=>s<0?sz*1.15:W-sz*1.15;
+  if(Math.abs(landX(side)-hcx)<sz*1.6)side=-side;                    // never land on the hole
+  let gyp=Math.min(H-170,Math.max(lr.top+lr.height*.55,lr.bottom-mh*1.2));
+  if(Math.abs(landX(side)-hcx)<sz*1.6||lr.left<landX(side)+sz*.6&&lr.right>landX(side)-sz*.6)gyp=lr.bottom+mh+sz*.6;   // phone: the logo spans the width, so land below it
+  gyp=Math.min(gyp,H-150);
+  const gxp=landX(side);
+  const tChar=(L3?L3.END:2.4)+1.0;
+  intro={solo,img,lr,cols,cwid,sc,sw,sh,sz,mh,gxp,gyp,side,tChar,swapped:false,tEnd:0};
 }
 function drawIntro(dt){
   if(!intro)return;
@@ -303,26 +321,24 @@ function drawIntro(dt){
     }
     if(t>=2.4){I.swapped=true;logo.style.visibility='visible'}
   }
-  // the pal: drops in small, bounces like on a trampoline, never touches the lettering
+  // the pal: peeks in from the side, looks around, then hops out to its spot
   const tc=t-I.tChar;
   if(tc>=0){
-    const sz=I.sz,mh=I.mh,gx=I.gxp,gy=I.gyp;
-    let y=gy,sy=1,sx=1;
-    const FALL=.55;
-    if(tc<FALL){const u=tc/FALL;y=gy-(1-u*u)*(gy+sz*1.6);sy=1+.35*u;sx=1/Math.sqrt(sy)}
+    const sz=I.sz,mh=I.mh,gx=I.gxp,gy=I.gyp,sd=I.side;
+    const edgeX=sd<0?0:W, hideX=edgeX+sd*sz*.62, peekX=edgeX-sd*sz*.02;    // fully hidden -> about half the body showing
+    let x=hideX,y=gy,sx=1,sy=1,rot=0;
+    const T_IN=.5,T_HOLD=.9,T_SQ=.16,T_HOP=.6;
+    if(tc<T_IN){const u=tc/T_IN,e=1-Math.pow(1-u,3);x=hideX+(peekX-hideX)*e;rot=-sd*.16*e;sx=1-.06*e}   // slides out from the edge, leaning in
+    else if(tc<T_IN+T_HOLD){const u=tc-T_IN;x=peekX;rot=-sd*(.16+.06*Math.sin(u*7));y=gy-Math.abs(Math.sin(u*4.5))*sz*.07;sx=1+.03*Math.sin(u*9)}   // looks around
+    else if(tc<T_IN+T_HOLD+T_SQ){const u=(tc-T_IN-T_HOLD)/T_SQ;x=peekX;rot=-sd*.16*(1-u);sy=1-.28*u;sx=1+.2*u}                     // squats to jump
+    else if(tc<T_IN+T_HOLD+T_SQ+T_HOP){
+      const u=(tc-T_IN-T_HOLD-T_SQ)/T_HOP;x=peekX+(gx-peekX)*(u<.5?2*u*u:1-2*(1-u)*(1-u));y=gy-4*u*(1-u)*sz*1.15;
+      const e=Math.abs(1-2*u);sy=1+.3*e*e;sx=1/Math.sqrt(sy);rot=-sd*.2*(1-u)*Math.sin(u*Math.PI)}                                   // a high springy hop
     else{
-      let r=tc-FALL,done=true;
-      for(const b of BOUNCES){
-        const SQ=.1;
-        if(r<SQ){const u=r/SQ;sy=.55+.45*u*u;sx=1/Math.sqrt(sy)*1.02;y=gy;done=false;break}     // pressing into the trampoline
-        r-=SQ;
-        if(r<b.T){const v=r/b.T;y=gy-b.h*4*v*(1-v);const e=Math.abs(1-2*v);sy=1+.28*e*e;sx=1/Math.sqrt(sy);done=false;break}   // in the air, stretched at the ends
-        r-=b.T;
-      }
-      if(done){const s=spring(r,9,26);sy=1-.12*s;sx=1+.08*s;y=gy;
-        if(r>.3){finishIntro();return}}
-    }
-    shadow(gx,gy+3,sz*.42,Math.max(0,gy-y),sz);c.save();c.translate(gx,y);c.scale(sx,sy);c.drawImage(I.solo,-sz/2,-mh,sz,mh);c.restore()
+      const s=tc-(T_IN+T_HOLD+T_SQ+T_HOP);x=gx;const k=spring(s,8,24);sy=1-.28*k;sx=1+.2*k;                                          // lands and wobbles
+      if(s>.45){finishIntro();return}}
+    if(tc>=T_IN+T_HOLD+T_SQ-.02)shadow(x,gy+3,sz*.42,Math.max(0,gy-y),sz);
+    c.save();c.translate(x,y);c.rotate(rot);c.scale(sx,sy);c.drawImage(I.solo,-sz/2,-mh,sz,mh);c.restore()
   }
 }
 function finishIntro(){
@@ -352,7 +368,7 @@ function step(now){
     px.globalAlpha=r.l;px.strokeStyle='#ff4fa0';px.lineWidth=5*r.l;px.beginPath();px.arc(r.x,r.y,r.r,0,6.28);px.stroke()}
   px.globalAlpha=1;
   if(state==='tunnel')drawTunnel(now);
-  __c+=performance.now()-__t;__n++;window.__ms&&(window.__ms.avg=__c/__n);
+  __c+=performance.now()-__t;__n++;window.__ms&&(window.__ms.avg=__c/__n,window.__ms.c=__c,window.__ms.n=__n);
   requestAnimationFrame(step);
 }
 
@@ -379,7 +395,7 @@ function updatePals(dt,now){
     const damp=Math.pow(.91,dt);p.sv*=damp;p.svy*=damp;
     p.x+=p.sv*dt;p.y+=p.svy*dt;
     // the pal is solid: it bumps into the Makers' Side lettering and never slips under it
-    {const lr=logo.getBoundingClientRect(),hw=sz*.4,hh=sz*.3,L=lr.left+lr.width*.02-hw,Rr=lr.right-lr.width*.02+hw,T=lr.top+lr.height*.16-hh,B=lr.bottom+hh;
+    {if(!LRECT)LRECT=logo.getBoundingClientRect();const lr=LRECT,hw=sz*.4,hh=sz*.3,L=lr.left+lr.width*.02-hw,Rr=lr.right-lr.width*.02+hw,T=lr.top+lr.height*.16-hh,B=lr.bottom+hh;
      if(p.x>L&&p.x<Rr&&p.y>T&&p.y<B){
        const dl=p.x-L,dr=Rr-p.x,dtp=p.y-T,db=B-p.y,m=Math.min(dl,dr,dtp,db);let nx=0,ny=0,into=0;
        if(m===dl){p.x=L;nx=-1;into=p.sv}else if(m===dr){p.x=Rr;nx=1;into=-p.sv}else if(m===dtp){p.y=T;ny=-1;into=p.svy}else{p.y=B;ny=1;into=-p.svy}
@@ -522,7 +538,7 @@ b.addEventListener('click',()=>{h.textContent=say[si++%say.length];b.animate([{t
     state='done';$('.hero').style.display='none';$('#company').classList.add('on');body.classList.remove('locked');observe();
     document.querySelectorAll('.reveal').forEach(el=>el.classList.add('in'));
     if(location.hash)setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView(),50);return}
-  if(reduce){const solo=await loadImg('assets/pal.png');addPal(W/2,H*.5,solo);body.classList.add('ready');state='play';return}
+  if(reduce){placeHole();const solo=await loadImg('assets/pal.png');addPal(W/2,H*.5,solo);body.classList.add('ready');state='play';return}
   try{await (document.fonts?.ready);await setupIntro()}catch(e){console.warn(e);const solo=await loadImg('assets/pal.png');addPal(W/2,H*.5,solo);body.classList.add('ready');state='play'}
 })();
 requestAnimationFrame(step);

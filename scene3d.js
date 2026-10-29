@@ -8,16 +8,18 @@ const smooth = (u) => u * u * (3 - 2 * u);
 const BLACK = 0x030303;
 
 export async function initScene({ W, H, lr, marquee }) {
+  // phones / coarse pointers get a lighter scene (?low=1 forces it on a desktop for testing)
+  const LOW = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 700 || /[?&]low/.test(location.search);
   const canvas = document.createElement('canvas');
   canvas.id = 'l3';
   canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:15;pointer-events:none';
   document.body.appendChild(canvas);
 
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, stencil: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !LOW, stencil: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(LOW ? 1.5 : 2, devicePixelRatio || 1));
   renderer.setSize(W, H, false);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = LOW ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.NoToneMapping;
   renderer.setClearColor(0x000000, 0);
 
@@ -40,11 +42,11 @@ export async function initScene({ W, H, lr, marquee }) {
   const sun = new THREE.DirectionalLight(0xffffff, 0.02);
   sun.position.set(-240, 380, 1900);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(LOW ? 1024 : 2048, LOW ? 1024 : 2048);
   sun.shadow.radius = 8; sun.shadow.bias = -0.0004;
   Object.assign(sun.shadow.camera, { left: -1400, right: 1400, top: 1400, bottom: -1400, near: 100, far: 4000 });
   scene.add(sun);
-  const wall = new THREE.Mesh(new THREE.PlaneGeometry(W * 4, H * 4), new THREE.ShadowMaterial({ opacity: 0.3, color: 0x4a1030 }));
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.3, color: 0x4a1030 }));   // only as big as the shadow needs to be, not the whole screen
   wall.position.z = -60; wall.receiveShadow = true;
   scene.add(wall);
 
@@ -53,7 +55,7 @@ export async function initScene({ W, H, lr, marquee }) {
 
   // ---- jelly material: a vertex stretch / squash / wobble that acts on a whole letter body ----
   const mkMaterial = (halfH, color = BLACK) => {
-    const m = new THREE.MeshPhysicalMaterial({ color, roughness: 0.38, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.22, specularIntensity: 0.9 });
+    const m = LOW ? new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0 }) : new THREE.MeshPhysicalMaterial({ color, roughness: 0.38, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.22, specularIntensity: 0.9 });
     const u = { uSY: { value: 1 }, uSX: { value: 1 }, uWave: { value: 0 }, uPh: { value: 0 }, uBot: { value: -halfH }, uH: { value: halfH * 2 } };
     m.userData.u = u;
     m.onBeforeCompile = (sh) => {
@@ -81,7 +83,7 @@ export async function initScene({ W, H, lr, marquee }) {
   const DEPTH = 80, BEV_T = 34, BEV_S = 14;
   for (const s of logoData.shapes) {
     const [x0, y0, x1, y1] = s.bbox, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-    const geo = new THREE.ExtrudeGeometry(toShape(s, cx, cy), { depth: DEPTH, bevelEnabled: true, bevelThickness: BEV_T, bevelSize: BEV_S, bevelOffset: -BEV_S, bevelSegments: 6, curveSegments: 10 });
+    const geo = new THREE.ExtrudeGeometry(toShape(s, cx, cy), { depth: DEPTH, bevelEnabled: true, bevelThickness: BEV_T, bevelSize: BEV_S, bevelOffset: -BEV_S, bevelSegments: LOW ? 3 : 6, curveSegments: LOW ? 5 : 10 });
     geo.translate(0, 0, -DEPTH / 2); geo.computeVertexNormals();
     const mesh = new THREE.Mesh(geo, mkMaterial((y1 - y0) / 2));
     mesh.castShadow = true;
@@ -94,7 +96,7 @@ export async function initScene({ W, H, lr, marquee }) {
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
     for (const s of tagData.shapes) for (const p of s.outer) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-    const geo = new THREE.ExtrudeGeometry(tagData.shapes.map((s) => toShape(s, cx, cy)), { depth: 46, bevelEnabled: true, bevelThickness: 7, bevelSize: 2.2, bevelOffset: -2.2, bevelSegments: 2, curveSegments: 5 });
+    const geo = new THREE.ExtrudeGeometry(tagData.shapes.map((s) => toShape(s, cx, cy)), { depth: 46, bevelEnabled: true, bevelThickness: 7, bevelSize: 2.2, bevelOffset: -2.2, bevelSegments: LOW ? 1 : 2, curveSegments: LOW ? 3 : 5 });
     geo.translate(0, 0, -23); geo.computeVertexNormals();
     const mesh = new THREE.Mesh(geo, mkMaterial((y1 - y0) / 2));
     mesh.castShadow = false;
@@ -128,7 +130,7 @@ export async function initScene({ W, H, lr, marquee }) {
     const uw = g.measureText(unit).width, n = Math.max(1, Math.round(c.width / uw));
     const step = c.width / n;                                   // whole number of repeats => the seam is invisible
     for (let i = 0; i < n; i++) g.fillText(unit, i * step, c.height / 2 + 2);
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.anisotropy = 8;
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.anisotropy = LOW ? 2 : 8;
     return t;
   })();
   const R = W * 1.5;
@@ -137,7 +139,7 @@ export async function initScene({ W, H, lr, marquee }) {
     if (drum) { stage.remove(drum); drum.geometry.dispose(); stage.remove(drumRims); }
     const bandH = mq.height;
     drumTex.repeat.x = Math.max(2, Math.round((2 * Math.PI * R) / 2900));
-    const geo = new THREE.CylinderGeometry(R, R, bandH, 200, 1, true);
+    const geo = new THREE.CylinderGeometry(R, R, bandH, LOW ? 96 : 200, 1, true);
     const mat = new THREE.MeshStandardMaterial({ map: drumTex, roughness: 0.5, metalness: 0, side: THREE.FrontSide });
     drum = new THREE.Mesh(geo, mat);
     const cy0 = H / 2 - (mq.top + mq.height / 2);
@@ -145,7 +147,7 @@ export async function initScene({ W, H, lr, marquee }) {
     stage.add(drum);
     drumRims = new THREE.Group(); drumRims.position.set(0, cy0, -R); stage.add(drumRims);
     for (const s of [-1, 1]) {                                  // thin pink rims (front arc only) so the drum has a visible edge
-      const rimM = new THREE.Mesh(new THREE.TorusGeometry(R + 1, 3, 8, 160, Math.PI), new THREE.MeshStandardMaterial({ color: 0xff4fa0, roughness: 0.4 }));
+      const rimM = new THREE.Mesh(new THREE.TorusGeometry(R + 1, 3, 6, LOW ? 80 : 160, Math.PI), new THREE.MeshStandardMaterial({ color: 0xff4fa0, roughness: 0.4 }));
       rimM.rotation.x = Math.PI / 2; rimM.position.y = s * bandH / 2; drumRims.add(rimM);
     }
   };
@@ -193,16 +195,16 @@ export async function initScene({ W, H, lr, marquee }) {
   // ---- tunnel: a ribbed tube with real lit rings; the camera dives in with a widening lens ----
   const tun = new THREE.Group(); tun.visible = false; scene.add(tun);
   const ringCols = [0xff4fa0, 0x2a0a20, 0xeabbda, 0xffffff];
-  const RING_N = 48, RING_GAP = 170, RING_R = 300, TUN_L = RING_N * RING_GAP;
-  const ringGeo = new THREE.TorusGeometry(RING_R, 12, 16, 80);
+  const RING_N = LOW ? 30 : 48, RING_GAP = LOW ? 270 : 170, RING_R = 300, TUN_L = RING_N * RING_GAP;
+  const ringGeo = new THREE.TorusGeometry(RING_R, 12, LOW ? 8 : 16, LOW ? 40 : 80);
   const rings = [];
   for (let i = 0; i < RING_N; i++) {
     const c = ringCols[i % 4];
-    const m = new THREE.Mesh(ringGeo, new THREE.MeshStandardMaterial({ color: c, roughness: 0.35, metalness: 0.1, emissive: c, emissiveIntensity: 0.28 }));
+    const m = new THREE.Mesh(ringGeo, LOW ? new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: 0.3 }) : new THREE.MeshStandardMaterial({ color: c, roughness: 0.35, metalness: 0.1, emissive: c, emissiveIntensity: 0.28 }));
     m.position.z = -i * RING_GAP; m.rotation.z = i * 0.35; tun.add(m); rings.push(m);
   }
   const wallU = { uCam: { value: 0 } };
-  const tubeGeo = new THREE.CylinderGeometry(RING_R + 6, RING_R + 6, TUN_L + 2400, 72, 1, true); tubeGeo.rotateX(Math.PI / 2); tubeGeo.translate(0, 0, -TUN_L / 2);
+  const tubeGeo = new THREE.CylinderGeometry(RING_R + 6, RING_R + 6, TUN_L + 2400, LOW ? 40 : 72, 1, true); tubeGeo.rotateX(Math.PI / 2); tubeGeo.translate(0, 0, -TUN_L / 2);
   tun.add(new THREE.Mesh(tubeGeo, new THREE.ShaderMaterial({
     uniforms: wallU, side: THREE.BackSide,
     vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
@@ -219,7 +221,7 @@ export async function initScene({ W, H, lr, marquee }) {
   })));
   {
     const pts = [], cols = [];
-    for (let i = 0; i < 260; i++) {
+    for (let i = 0; i < (LOW ? 110 : 260); i++) {
       const a = Math.random() * Math.PI * 2, rr = 90 + Math.random() * 230, z = -Math.random() * TUN_L, len = 120 + Math.random() * 400;
       pts.push(Math.cos(a) * rr, Math.sin(a) * rr, z, Math.cos(a) * rr, Math.sin(a) * rr, z - len);
       const c = new THREE.Color([0xff4fa0, 0xeabbda, 0xffffff][i % 3]); cols.push(c.r, c.g, c.b, c.r, c.g, c.b);
@@ -227,7 +229,7 @@ export async function initScene({ W, H, lr, marquee }) {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
     tun.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.7 })));
   }
-  const glow = new THREE.Mesh(new THREE.CircleGeometry(900, 48), new THREE.MeshBasicMaterial({ color: 0xff4fa0, fog: false }));
+  const glow = new THREE.Mesh(new THREE.CircleGeometry(900, 32), new THREE.MeshBasicMaterial({ color: 0xff4fa0, fog: false }));
   glow.position.z = -TUN_L - 900; tun.add(glow);
 
   // ---- layout ----
@@ -238,6 +240,7 @@ export async function initScene({ W, H, lr, marquee }) {
     cxs = rect.left + rect.width / 2 - W / 2;
     cys = H / 2 - (rect.top + rect.height / 2);
     fall = (rect.top + rect.height) / sc + 260;
+    wall.scale.set(rect.width * 2.2, rect.height * 2.0, 1); wall.position.set(cxs, cys, -60);
     if (mq) makeDrum(mq);
   };
   layout(lr, W, H, null);
@@ -280,6 +283,8 @@ export async function initScene({ W, H, lr, marquee }) {
   }
 
   // ---- per-frame ----
+  renderer.shadowMap.autoUpdate = !LOW;
+  let fc = 0;
   const ptr = { sx: 0, sy: 0 };
   const pk = { t0: -1, amp: 0, dx: 0, dy: 0 };
   const suckS = { on: false, t0: 0, hx: 0, hy: 0 };
@@ -288,6 +293,7 @@ export async function initScene({ W, H, lr, marquee }) {
   function setPal(p) { palState = p; }
   function frame({ t, state, mouse, now, ready, hole, near, tunT }) {
     if (!visible) return;
+    if (LOW && (fc++ % 3 === 0)) renderer.shadowMap.needsUpdate = true;
     const secs = (now - clock0) / 1000;
     holeU.uTime.value = secs;
     const tunneling = state === 'tunnel';
