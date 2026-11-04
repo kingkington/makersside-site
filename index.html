@@ -13,8 +13,13 @@
 <link rel="canonical" href="https://makersside.com/">
 <meta property="og:image" content="assets/logo-pink.png">
 <link rel="icon" href="assets/pal.png">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preload" as="image" href="assets/logo-main.png">
+<link rel="preload" as="image" href="assets/pal.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+<link rel="modulepreload" href="./vendor/three.module.js">
+<link rel="modulepreload" href="./scene3d.js">
 <script>window.L3ready=new Promise(r=>{window.__l3res=r})</script>
 <script type="module">import("./scene3d.js").then(m=>window.__l3res(m)).catch(e=>{console.warn("3D scene unavailable",e);window.__l3res(null)})</script>
 <style>
@@ -289,7 +294,7 @@ async function setupIntro(){
   const [solo,img]=await Promise.all([loadImg('assets/pal.png'),loadImg('assets/logo-main.png')]);
   const lr=logo.getBoundingClientRect(), sz=SIZE();
   const sw=img.naturalWidth, sh=img.naturalHeight;
-  try{const mod=await window.L3ready;if(mod){const mq=document.querySelector('.marquee').getBoundingClientRect();L3=await mod.initScene({W,H,lr,marquee:{top:mq.top,height:mq.height}});body.classList.add('is3d');tc.style.display='none'}}catch(e){console.warn('3D logo failed, using flat fallback',e);L3=null}
+  try{const mod=await Promise.race([window.L3ready,new Promise(r=>setTimeout(()=>r(null),4000))]);if(mod){const mq=document.querySelector('.marquee').getBoundingClientRect();L3=await mod.initScene({W,H,lr,marquee:{top:mq.top,height:mq.height}});body.classList.add('is3d');tc.style.display='none'}}catch(e){console.warn('3D logo failed, using flat fallback',e);L3=null}
   const NC=Math.max(60,Math.round(lr.width/3)), cwid=lr.width/NC, sc=sw/NC;
   // each column leaves a beat after its neighbour, so the logo pours down as one stretchy curtain
   const cols=[];
@@ -546,7 +551,7 @@ b.addEventListener('click',()=>{h.textContent=say[si++%say.length];b.animate([{t
     document.querySelectorAll('.reveal').forEach(el=>el.classList.add('in'));
     if(location.hash)setTimeout(()=>document.querySelector(location.hash)?.scrollIntoView(),50);return}
   if(reduce){placeHole();const solo=await loadImg('assets/pal.png');addPal(W/2,H*.5,solo);body.classList.add('ready');state='play';return}
-  try{await (document.fonts?.ready);await setupIntro()}catch(e){console.warn(e);const solo=await loadImg('assets/pal.png');addPal(W/2,H*.5,solo);body.classList.add('ready');state='play'}
+  try{await Promise.race([document.fonts?.ready,new Promise(r=>setTimeout(r,500))]);await setupIntro()}catch(e){console.warn(e);const solo=await loadImg('assets/pal.png');addPal(W/2,H*.5,solo);body.classList.add('ready');state='play'}
 })();
 requestAnimationFrame(step);
 window.__ms={seek(t){introSpeed=0;introT=t},startSuck,get state(){return state},pals};
